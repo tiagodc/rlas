@@ -2,7 +2,7 @@
 #define VOXEL_GRID_H
 
 #include <math.h>
-#include <set>
+// #include <set>
 #include <stdio.h>
 #include <vector>
 
@@ -117,19 +117,21 @@ class voxelGrid{
 
         if( registry->size() <= xPos )
         {
-            VLLU zTemp( zPos + 1, 0 );
-            VVLLU yTemp( yPos + 1, zTemp);
+            VLLU zTemp( 0, 0 );
+            VVLLU yTemp( 0, zTemp);
             VVVLLU xTemp( xPos + 1 - registry->size(), yTemp );
             registry->insert( registry->end(), xTemp.begin(), xTemp.end() );
         }
-        else if( (*registry)[xPos].size() <= yPos )
+        
+        if( (*registry)[xPos].size() <= yPos )
         {
             VVLLU* temp = &(*registry)[xPos];
-            VLLU zTemp( zPos + 1, 0 );
+            VLLU zTemp( 0, 0 );
             VVLLU yTemp( yPos + 1 - temp->size(), zTemp);
             temp->insert( temp->end(), yTemp.begin(), yTemp.end() );
         }
-        else if((*registry)[xPos][yPos].size() <= zPos)
+        
+        if((*registry)[xPos][yPos].size() <= zPos)
         {
             VLLU* temp = &(*registry)[xPos][yPos];
             VLLU zTemp( zPos + 1 - temp->size(), 0 );
