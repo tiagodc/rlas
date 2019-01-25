@@ -124,15 +124,15 @@ class voxelGrid{
         }
         else if( (*registry)[xPos].size() <= yPos )
         {
-            VLLU zTemp( zPos + 1, 0 );
-            VVLLU yTemp( yPos + 1, zTemp);
             VVLLU* temp = &(*registry)[xPos];
+            VLLU zTemp( zPos + 1, 0 );
+            VVLLU yTemp( yPos + 1 - temp->size(), zTemp);
             temp->insert( temp->end(), yTemp.begin(), yTemp.end() );
         }
         else if((*registry)[xPos][yPos].size() <= zPos)
         {
-            VLLU zTemp( zPos + 1, 0 );
             VLLU* temp = &(*registry)[xPos][yPos];
+            VLLU zTemp( zPos + 1 - temp->size(), 0 );
             temp->insert( temp->end(), zTemp.begin(), zTemp.end() );
         }
 
