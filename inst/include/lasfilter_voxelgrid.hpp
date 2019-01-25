@@ -9,7 +9,7 @@
 #include "lasfilter.hpp"
 #include "laszip_decompress_selective_v3.hpp"
 
-class voxelGrid{
+/*class voxelGrid{
 
   public:
     void setVoxel(double vLen);
@@ -20,6 +20,163 @@ class voxelGrid{
   private:
     double voxelSideLength;
     std::set< std::vector<int> > dynamic_registry;
+};*/
+
+using namespace std;
+
+typedef unsigned long long int LLU;
+typedef std::vector<LLU> VLLU;
+typedef std::vector<VLLU> VVLLU;
+typedef std::vector<VVLLU> VVVLLU;
+
+class voxelGrid{
+
+  public:
+    void setVoxel(double vLen)
+    {
+        voxelSpacing = vLen < 0 ? vLen : -vLen;
+    };
+
+    void setBitSize()
+    {
+        bitContainerSize = sizeof(LLU) * 8;
+    };
+
+    unsigned int getLength(double first, double last)
+    {
+        double distance = last - first;
+
+        if(distance < 0)
+            distance = -distance;
+
+        unsigned int n = floor(distance / voxelSpacing);
+        return n;
+    };
+
+    unsigned int getLength(double first, double last, unsigned short int& remainder)
+    {
+        double distance = last - first;
+
+        if(distance < 0)
+            distance = -distance;
+
+        unsigned int n = floor(distance / voxelSpacing);
+
+        remainder = n % bitContainerSize;
+        n = ceil(n/bitContainerSize);
+
+        return n;
+    };
+
+    bool checkRegistry(double x, double y, double z)
+    {
+        if(voxelSpacing < 0){
+            xAnker = x;
+            yAnker = y;
+            zAnker = z;
+            voxelSpacing = -voxelSpacing;
+        }
+
+        VVVLLU* registry;
+
+        if(x < xAnker){
+            if(y < yAnker){
+                if(z < zAnker){
+                    registry = &reg_xyz_minus;
+                }else{
+                    registry = &reg_z_plus_xy_minus;
+                }
+            }else{
+                if(z < zAnker){
+                    registry = &reg_y_plus_xz_minus;
+                }else{
+                    registry = &reg_yz_plus_x_minus;
+                }
+            }
+        }else{
+            if(y < yAnker){
+                if(z < zAnker){
+                    registry = &reg_x_plus_yz_minus;
+                }else{
+                    registry = &reg_xz_plus_y_minus;
+                }
+            }else{
+                if(z < zAnker){
+                    registry = &reg_xy_plus_z_minus;
+                }else{
+                    registry = &reg_xyz_plus;
+                }
+            }
+        }
+
+        unsigned short int zBit;
+
+        unsigned int xPos = getLength(xAnker, x);
+        unsigned int yPos = getLength(yAnker, y);
+        unsigned int zPos = getLength(zAnker, z, zBit);
+
+        if( registry->size() <= xPos )
+        {
+            VLLU zTemp( zPos + 1, 0 );
+            VVLLU yTemp( yPos + 1, zTemp);
+            VVVLLU xTemp( xPos + 1 - registry->size(), yTemp );
+            registry->insert( registry->end(), xTemp.begin(), xTemp.end() );
+        }
+        else if( (*registry)[xPos].size() <= yPos )
+        {
+            VLLU zTemp( zPos + 1, 0 );
+            VVLLU yTemp( yPos + 1, zTemp);
+            VVLLU* temp = &(*registry)[xPos];
+            temp->insert( temp->end(), yTemp.begin(), yTemp.end() );
+        }
+        else if((*registry)[xPos][yPos].size() <= zPos)
+        {
+            VLLU zTemp( zPos + 1, 0 );
+            VLLU* temp = &(*registry)[xPos][yPos];
+            temp->insert( temp->end(), zTemp.begin(), zTemp.end() );
+        }
+
+        LLU* bitHost = &(*registry)[xPos][yPos][zPos];
+        LLU bitPoint = (LLU)1 << zBit;
+        LLU bitChecker = *bitHost & bitPoint;
+
+        bool isFilled = bitChecker == bitPoint;
+
+        if(!isFilled)
+            *bitHost |= bitPoint;
+
+        return isFilled;
+    };
+
+    void resetDynamicReg(){
+      VVVLLU temp;
+      reg_xyz_plus = temp;
+      reg_xy_plus_z_minus = temp;
+      reg_xz_plus_y_minus = temp;
+      reg_yz_plus_x_minus = temp;
+      reg_x_plus_yz_minus = temp;
+      reg_y_plus_xz_minus = temp;
+      reg_z_plus_xy_minus = temp;
+      reg_xyz_minus = temp;
+      voxelSpacing *= -1;
+    };
+
+  private:
+    double voxelSpacing;
+    double xAnker;
+    double yAnker;
+    double zAnker;
+    unsigned int bitContainerSize;
+
+    VVVLLU reg_xyz_plus;
+    VVVLLU reg_xy_plus_z_minus;
+    VVVLLU reg_xz_plus_y_minus;
+    VVVLLU reg_yz_plus_x_minus;
+    VVVLLU reg_x_plus_yz_minus;
+    VVVLLU reg_y_plus_xz_minus;
+    VVVLLU reg_z_plus_xy_minus;
+    VVVLLU reg_xyz_minus;
+
 };
 
 class LAScriterionThinWithVoxel : public LAScriterion{
@@ -34,8 +191,8 @@ class LAScriterionThinWithVoxel : public LAScriterion{
       box.resetDynamicReg();
     };
     LAScriterionThinWithVoxel(F32 voxel_resolution){
-      resolution = voxel_resolution;
-      box.setVoxel(resolution);
+      box.setVoxel(voxel_resolution);
+      box.setBitSize();
     };
     ~LAScriterionThinWithVoxel(){ reset(); };
 

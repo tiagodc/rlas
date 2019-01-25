@@ -1,3 +1,4 @@
+/*
 #include "lasfilter_voxelgrid.hpp"
 
 void voxelGrid::setVoxel(double vLen){
@@ -28,3 +29,4 @@ void voxelGrid::resetDynamicReg(){
     std::set< std::vector<int> > newDm;
     dynamic_registry = newDm;
 }
+*/
